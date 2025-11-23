@@ -15,7 +15,7 @@ export const StudyList: React.FC<StudyListProps> = ({
   onSelectToken,
   activeIndex
 }) => {
-  const flaggedList = Array.from(flaggedIndices).sort((a, b) => a - b);
+  const flaggedList = (Array.from(flaggedIndices) as number[]).sort((a, b) => a - b);
 
   // Helper to reconstruct the sentence surrounding a specific token index
   const getContextSentence = (targetIndex: number): string => {
@@ -25,7 +25,7 @@ export const StudyList: React.FC<StudyListProps> = ({
     let startIndex = targetIndex;
     while (startIndex > 0) {
       const prevToken = tokens[startIndex - 1];
-      if (prevToken.isPunctuation && /[.?!]/.test(prevToken.original)) {
+      if (prevToken && prevToken.isPunctuation && /[.?!]/.test(prevToken.original)) {
         break;
       }
       startIndex--;
@@ -35,7 +35,7 @@ export const StudyList: React.FC<StudyListProps> = ({
     let endIndex = targetIndex;
     while (endIndex < tokens.length - 1) {
       const currToken = tokens[endIndex];
-      if (currToken.isPunctuation && /[.?!]/.test(currToken.original)) {
+      if (currToken && currToken.isPunctuation && /[.?!]/.test(currToken.original)) {
         break;
       }
       endIndex++;
@@ -46,6 +46,8 @@ export const StudyList: React.FC<StudyListProps> = ({
     
     for (let i = startIndex; i <= endIndex; i++) {
       const token = tokens[i];
+      if (!token) continue;
+
       let text = token.original;
       
       // Bold the target word
@@ -54,12 +56,9 @@ export const StudyList: React.FC<StudyListProps> = ({
       }
 
       // Add simple logic to avoid spaces before punctuation
-      // (This is a heuristic since we don't have original whitespace data)
       if (token.isPunctuation) {
-         // Attach punctuation to previous word by checking current length of array
          if (sentenceParts.length > 0) {
             const lastPart = sentenceParts[sentenceParts.length - 1];
-            // If the last part ended with a space, trim it to attach punctuation
             sentenceParts[sentenceParts.length - 1] = lastPart.trimEnd() + text + " ";
          } else {
              sentenceParts.push(text + " ");
@@ -75,11 +74,12 @@ export const StudyList: React.FC<StudyListProps> = ({
   const handleExportCSV = () => {
     if (flaggedList.length === 0) return;
 
-    // Headers compatible with Anki import (though Anki doesn't strictly require headers, it helps organization)
     const headers = ["Lemma (Root)", "Context Sentence (Front)", "Definition & Grammar (Back)"];
     
     const rows = flaggedList.map(index => {
       const token = tokens[index];
+      if (!token) return ["", "", ""]; // Safety check
+
       const context = getContextSentence(index);
       
       // Construct HTML formatted back-of-card content
@@ -88,7 +88,7 @@ export const StudyList: React.FC<StudyListProps> = ({
 <p><b>Grammar:</b> ${token.grammaticalInfo}</p>
 <p><i>${token.partOfSpeech}</i></p>
 ${token.etymology ? `<small>${token.etymology}</small>` : ''}
-      `.trim().replace(/\n/g, ""); // Flatten newlines for CSV safety
+      `.trim().replace(/\n/g, "");
 
       return [
         token.lemma,
@@ -102,7 +102,7 @@ ${token.etymology ? `<small>${token.etymology}</small>` : ''}
       ...rows
     ].map(row => 
       row.map(cell => 
-        `"${cell.replace(/"/g, '""')}"` // Escape double quotes
+        `"${(cell || '').replace(/"/g, '""')}"`
       ).join(",")
     ).join("\n");
 
@@ -138,6 +138,8 @@ ${token.etymology ? `<small>${token.etymology}</small>` : ''}
         ) : (
           flaggedList.map((index) => {
             const token = tokens[index];
+            if (!token) return null;
+            
             return (
               <button
                 key={index}

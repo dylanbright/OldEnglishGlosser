@@ -1,0 +1,5 @@
+{
+  "name": "Old English Glosser",
+  "description": "An interactive philological tool that analyzes Old English texts, providing instant definitions, grammar, and morphological data on hover.",
+  "requestFramePermissions": []
+}

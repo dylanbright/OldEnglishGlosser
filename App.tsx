@@ -31,11 +31,33 @@ const App: React.FC = () => {
     setErrorMsg(null);
   };
 
+  const handleImport = (tokens: GlossToken[]) => {
+    setGlossTokens(tokens);
+    setAppState(AppState.GLOSSING);
+    setErrorMsg(null);
+  };
+
+  const handleExport = () => {
+    if (glossTokens.length === 0) return;
+    
+    const dataStr = JSON.stringify(glossTokens, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `hwæt_analysis_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="min-h-screen bg-parchment-50 flex flex-col font-sans">
       <Header 
         onReset={handleReset} 
         showReset={appState === AppState.GLOSSING || appState === AppState.ERROR} 
+        onExport={appState === AppState.GLOSSING ? handleExport : undefined}
       />
 
       <main className="flex-1 relative">
@@ -43,7 +65,11 @@ const App: React.FC = () => {
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none mix-blend-multiply bg-[url('https://www.transparenttextures.com/patterns/aged-paper.png')]"></div>
 
         {appState === AppState.INPUT && (
-          <InputSection onSubmit={handleAnalyze} isLoading={false} />
+          <InputSection 
+            onSubmit={handleAnalyze} 
+            onImport={handleImport}
+            isLoading={false} 
+          />
         )}
 
         {appState === AppState.LOADING && (

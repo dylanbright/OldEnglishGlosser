@@ -1,8 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { Feather, BookOpen, Keyboard } from 'lucide-react';
+import { Feather, BookOpen, Keyboard, Upload } from 'lucide-react';
+import { GlossToken } from '../types';
 
 interface InputSectionProps {
   onSubmit: (text: string) => void;
+  onImport: (tokens: GlossToken[]) => void;
   isLoading: boolean;
 }
 
@@ -33,9 +35,10 @@ const SPECIAL_CHARS = [
   { char: 'Ƿ', label: 'Ƿ' },
 ];
 
-export const InputSection: React.FC<InputSectionProps> = ({ onSubmit, isLoading }) => {
+export const InputSection: React.FC<InputSectionProps> = ({ onSubmit, onImport, isLoading }) => {
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +49,39 @@ export const InputSection: React.FC<InputSectionProps> = ({ onSubmit, isLoading 
 
   const handleUseSample = () => {
     setText(SAMPLE_TEXT);
+  };
+
+  const handleFileClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        if (Array.isArray(json)) {
+          // Basic validation to ensure it looks like GlossToken[]
+          const isValid = json.length === 0 || (json[0].original !== undefined && json[0].lemma !== undefined);
+          if (isValid) {
+            onImport(json as GlossToken[]);
+          } else {
+            alert("Invalid file format: The JSON does not contain recognized gloss data.");
+          }
+        } else {
+          alert("Invalid file format: Expected an array of tokens.");
+        }
+      } catch (error) {
+        console.error("Error parsing JSON:", error);
+        alert("Failed to parse the file. Please ensure it is a valid JSON file.");
+      }
+      // Reset input so same file can be selected again if needed
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    reader.readAsText(file);
   };
 
   const insertChar = (char: string) => {
@@ -128,7 +164,28 @@ export const InputSection: React.FC<InputSectionProps> = ({ onSubmit, isLoading 
             spellCheck={false}
           />
           
-          <div className="mt-6 flex justify-end">
+          <div className="mt-6 flex justify-between items-center">
+            {/* Import Button */}
+            <div className="relative">
+              <input 
+                type="file" 
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept=".json"
+                hidden 
+              />
+              <button
+                type="button"
+                onClick={handleFileClick}
+                disabled={isLoading}
+                className="text-sm font-medium text-parchment-600 hover:text-parchment-900 flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-parchment-200/50 transition-colors"
+              >
+                <Upload size={16} />
+                Load Analysis
+              </button>
+            </div>
+
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={!text.trim() || isLoading}

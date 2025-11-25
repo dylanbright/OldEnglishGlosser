@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Feather, BookOpen } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Feather, BookOpen, Keyboard } from 'lucide-react';
 
 interface InputSectionProps {
   onSubmit: (text: string) => void;
@@ -8,8 +8,34 @@ interface InputSectionProps {
 
 const SAMPLE_TEXT = "Hwæt! Wé Gárdena in géardagum þéodcyninga þrym gefrúnon hú þá æþelingas ellen fremedon.";
 
+const SPECIAL_CHARS = [
+  // Requested Consonants
+  { char: 'æ', label: 'æ' },
+  { char: 'ð', label: 'ð' },
+  { char: 'þ', label: 'þ' },
+  { char: 'ƿ', label: 'ƿ' },
+  // Divider
+  { char: '|', label: '|', isDivider: true },
+  // Common Macrons (Vowels)
+  { char: 'ā', label: 'ā' },
+  { char: 'ǣ', label: 'ǣ' },
+  { char: 'ē', label: 'ē' },
+  { char: 'ī', label: 'ī' },
+  { char: 'ō', label: 'ō' },
+  { char: 'ū', label: 'ū' },
+  { char: 'ȳ', label: 'ȳ' },
+  // Divider
+  { char: '|', label: '|', isDivider: true },
+  // Uppercase Consonants
+  { char: 'Æ', label: 'Æ' },
+  { char: 'Ð', label: 'Ð' },
+  { char: 'Þ', label: 'Þ' },
+  { char: 'Ƿ', label: 'Ƿ' },
+];
+
 export const InputSection: React.FC<InputSectionProps> = ({ onSubmit, isLoading }) => {
   const [text, setText] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,6 +46,28 @@ export const InputSection: React.FC<InputSectionProps> = ({ onSubmit, isLoading 
 
   const handleUseSample = () => {
     setText(SAMPLE_TEXT);
+  };
+
+  const insertChar = (char: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      setText(prev => prev + char);
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const currentVal = text;
+
+    const newVal = currentVal.substring(0, start) + char + currentVal.substring(end);
+    
+    setText(newVal);
+
+    // Restore focus and move cursor after the inserted character
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + char.length, start + char.length);
+    }, 0);
   };
 
   return (
@@ -41,7 +89,38 @@ export const InputSection: React.FC<InputSectionProps> = ({ onSubmit, isLoading 
         </div>
         
         <form onSubmit={handleSubmit} className="p-6">
+          
+          {/* Special Character Toolbar */}
+          <div className="mb-3 flex items-center gap-2 flex-wrap bg-parchment-100/50 p-2 rounded-lg border border-parchment-200/50">
+             <div className="mr-2 text-parchment-400">
+                <Keyboard size={16} />
+             </div>
+             {SPECIAL_CHARS.map((item, idx) => {
+                if (item.isDivider) {
+                    return <div key={idx} className="w-px h-6 bg-parchment-300 mx-1"></div>;
+                }
+                return (
+                    <button
+                        key={idx}
+                        type="button"
+                        onClick={() => insertChar(item.char)}
+                        className="
+                           min-w-[32px] h-8 flex items-center justify-center rounded 
+                           bg-parchment-50 hover:bg-white active:bg-parchment-200
+                           text-parchment-900 font-serif text-lg leading-none
+                           border border-parchment-300 shadow-sm
+                           transition-all active:scale-95 hover:shadow-md hover:-translate-y-0.5
+                        "
+                        title={`Insert ${item.char}`}
+                    >
+                        {item.char}
+                    </button>
+                );
+             })}
+          </div>
+
           <textarea
+            ref={textareaRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Paste your Old English text here (e.g., from Beowulf, The Wanderer, etc.)..."

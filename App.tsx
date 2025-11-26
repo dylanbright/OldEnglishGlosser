@@ -37,6 +37,19 @@ const App: React.FC = () => {
     setErrorMsg(null);
   };
 
+  const handleToggleFlag = (index: number) => {
+    setGlossTokens(prevTokens => {
+      const newTokens = [...prevTokens];
+      if (newTokens[index]) {
+        newTokens[index] = { 
+          ...newTokens[index], 
+          isFlagged: !newTokens[index].isFlagged 
+        };
+      }
+      return newTokens;
+    });
+  };
+
   const handleExport = () => {
     if (glossTokens.length === 0) return;
     
@@ -100,7 +113,10 @@ const App: React.FC = () => {
         )}
 
         {appState === AppState.GLOSSING && (
-          <GlossView tokens={glossTokens} />
+          <GlossView 
+            tokens={glossTokens} 
+            onToggleFlag={handleToggleFlag}
+          />
         )}
       </main>
     </div>

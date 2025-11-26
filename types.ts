@@ -6,6 +6,7 @@ export interface GlossToken {
   grammaticalInfo: string;
   etymology: string;
   isPunctuation: boolean;
+  isFlagged?: boolean;
 }
 
 export enum AppState {

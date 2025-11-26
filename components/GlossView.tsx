@@ -5,6 +5,7 @@ import { StudyList } from './StudyList';
 
 interface GlossViewProps {
   tokens: GlossToken[];
+  onToggleFlag: (index: number) => void;
 }
 
 // Punctuation that should NOT have a space before it (attaches to the left)
@@ -17,19 +18,15 @@ const NO_SPACE_AFTER = new Set([
   '(', '[', '{', '“', '‘', '#', '$', '¿', '¡'
 ]);
 
-export const GlossView: React.FC<GlossViewProps> = ({ tokens }) => {
+export const GlossView: React.FC<GlossViewProps> = ({ tokens, onToggleFlag }) => {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const [flaggedIndices, setFlaggedIndices] = useState<Set<number>>(new Set());
 
-  const toggleFlag = (index: number) => {
-    const newSet = new Set(flaggedIndices);
-    if (newSet.has(index)) {
-      newSet.delete(index);
-    } else {
-      newSet.add(index);
-    }
-    setFlaggedIndices(newSet);
-  };
+  // Derive flagged indices from the tokens prop so StudyList can display them
+  const flaggedIndices = new Set(
+    tokens
+      .map((token, idx) => token.isFlagged ? idx : -1)
+      .filter(idx => idx !== -1)
+  );
 
   // Pre-calculate straight quote states (open vs close)
   const quoteStateMap = new Map<number, 'open' | 'close'>();
@@ -88,7 +85,7 @@ export const GlossView: React.FC<GlossViewProps> = ({ tokens }) => {
                 }
 
                 const isActive = activeIndex === index;
-                const isFlagged = flaggedIndices.has(index);
+                const isFlagged = !!token.isFlagged;
                 const isPunc = token.isPunctuation;
                 
                 // Spacing Logic
@@ -169,8 +166,8 @@ export const GlossView: React.FC<GlossViewProps> = ({ tokens }) => {
       <div className="h-64 lg:h-auto lg:w-[400px] xl:w-[480px] flex-shrink-0 z-20 shadow-2xl lg:shadow-none">
         <GlossaryPanel 
           token={activeIndex !== null ? tokens[activeIndex] : null}
-          isFlagged={activeIndex !== null ? flaggedIndices.has(activeIndex) : false}
-          onToggleFlag={() => activeIndex !== null && toggleFlag(activeIndex)}
+          isFlagged={activeIndex !== null ? !!tokens[activeIndex]?.isFlagged : false}
+          onToggleFlag={() => activeIndex !== null && onToggleFlag(activeIndex)}
         />
       </div>
       

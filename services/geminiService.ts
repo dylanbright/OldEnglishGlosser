@@ -15,31 +15,31 @@ const glossSchema: Schema = {
     properties: {
       original: {
         type: Type.STRING,
-        description: "The original word or punctuation mark exactly as it appears in the text."
+        description: "The original word, punctuation mark, or '\\n' for a newline/line-break exactly as it appears in the text."
       },
       modernTranslation: {
         type: Type.STRING,
-        description: "A brief modern English definition or translation of this specific word instance."
+        description: "A brief modern English definition or translation. For '\\n', return 'Line Break'."
       },
       lemma: {
         type: Type.STRING,
-        description: "The dictionary headword form of the word (Standard West Saxon spelling). Crucial: This must be the Nominative Singular for nouns, Infinitive for verbs, etc., suitable for dictionary lookup."
+        description: "The dictionary headword form (Standard West Saxon). For '\\n', return 'N/A'."
       },
       partOfSpeech: {
         type: Type.STRING,
-        description: "The part of speech (e.g., Noun, Verb, Pronoun, Preposition)."
+        description: "The part of speech. For '\\n', return 'Formatting'."
       },
       grammaticalInfo: {
         type: Type.STRING,
-        description: "Morphological details: Case, Gender, Number, Tense, Mood, Person (e.g., 'Nom. Sg. Masc.', '3rd Pers. Sg. Pres. Ind.')."
+        description: "Morphological details. For '\\n', return 'N/A'."
       },
       etymology: {
         type: Type.STRING,
-        description: "A very brief note on etymology or cognates (e.g., 'Cognate with German ...', 'Related to Modern English ...')."
+        description: "Brief etymology. For '\\n', return 'N/A'."
       },
       isPunctuation: {
         type: Type.BOOLEAN,
-        description: "True if this token is a punctuation mark, false otherwise."
+        description: "True if this is punctuation or a newline ('\\n')."
       }
     },
     required: ["original", "modernTranslation", "lemma", "partOfSpeech", "grammaticalInfo", "isPunctuation"]
@@ -53,7 +53,13 @@ export const analyzeOldEnglishText = async (text: string): Promise<GlossToken[]>
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: `You are an expert philologist specializing in Old English (Anglo-Saxon).
-      Analyze the following Old English text. Break it down into individual tokens (words and punctuation).
+      Analyze the following Old English text. Break it down into individual tokens (words, punctuation, and newlines).
+      
+      CRITICAL INSTRUCTION FOR STRUCTURE:
+      - Preserve the visual structure of the text.
+      - If you encounter a line break (newline character) in the text, you MUST output a distinct token where "original" is exactly "\\n".
+      - If there are multiple newlines (e.g. paragraph break), output multiple "\\n" tokens.
+      
       For each token, provide a detailed philological gloss including the modern meaning, lemma, part of speech, and specific grammatical morphology (case, gender, number, etc.) for this context.
       
       Text to analyze:
@@ -61,7 +67,7 @@ export const analyzeOldEnglishText = async (text: string): Promise<GlossToken[]>
       config: {
         responseMimeType: "application/json",
         responseSchema: glossSchema,
-        temperature: 0.1, // Low temperature for factual grammatical analysis
+        temperature: 0.1, 
       }
     });
 

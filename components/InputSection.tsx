@@ -8,7 +8,12 @@ interface InputSectionProps {
   isLoading: boolean;
 }
 
-const SAMPLE_TEXT = "Hwæt! Wé Gárdena in géardagum þéodcyninga þrym gefrúnon hú þá æþelingas ellen fremedon.";
+const SAMPLE_TEXT = `Hwæt! Wé Gárdena in géardagum
+þéodcyninga þrym gefrúnon
+hú þá æþelingas ellen fremedon.
+
+Oft Scyld Scéfing sceaþena þréatum
+monegum mægþum meodosetla oftéah.`;
 
 const SPECIAL_CHARS = [
   // Requested Consonants

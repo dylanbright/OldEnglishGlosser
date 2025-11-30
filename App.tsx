@@ -37,6 +37,32 @@ const App: React.FC = () => {
     setErrorMsg(null);
   };
 
+  const handleAppend = (newTokens: GlossToken[]) => {
+    setGlossTokens(prevTokens => {
+      // Check if we need a separator (newline) between the old and new text
+      // to prevent them from running into each other on the same line.
+      const lastToken = prevTokens[prevTokens.length - 1];
+      const needsSeparator = lastToken && lastToken.original !== '\n' && lastToken.original !== '\\n';
+
+      if (needsSeparator) {
+        const separator: GlossToken = {
+          original: '\n',
+          modernTranslation: 'Line Break',
+          lemma: 'N/A',
+          partOfSpeech: 'Formatting',
+          grammaticalInfo: 'N/A',
+          etymology: 'N/A',
+          isPunctuation: true,
+          isFlagged: false
+        };
+        // Add two newlines for a paragraph break effect
+        return [...prevTokens, separator, separator, ...newTokens];
+      }
+
+      return [...prevTokens, ...newTokens];
+    });
+  };
+
   const handleToggleFlag = (index: number) => {
     setGlossTokens(prevTokens => {
       const newTokens = [...prevTokens];
@@ -71,6 +97,7 @@ const App: React.FC = () => {
         onReset={handleReset} 
         showReset={appState === AppState.GLOSSING || appState === AppState.ERROR} 
         onExport={appState === AppState.GLOSSING ? handleExport : undefined}
+        onAppend={appState === AppState.GLOSSING ? handleAppend : undefined}
       />
 
       <main className="flex-1 relative">

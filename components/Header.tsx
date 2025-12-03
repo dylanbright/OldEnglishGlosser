@@ -57,7 +57,7 @@ export const Header: React.FC<HeaderProps> = ({ onReset, showReset, onExport, on
               Hwæt! Glosser
             </h1>
             <p className="text-xs text-parchment-700 font-medium tracking-wider uppercase opacity-80">
-              Old English Philology Tool
+              Old English Gloss Tool
             </p>
           </div>
         </div>

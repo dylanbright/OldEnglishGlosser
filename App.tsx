@@ -131,7 +131,7 @@ const App: React.FC = () => {
                 </div>
              </div>
              <h3 className="mt-8 text-xl font-serif text-parchment-800">Consulting the Scribes...</h3>
-             <p className="text-parchment-600 mt-2 text-sm">This analysis is AI generated.  A serious person would consult an expert, or least a real grammar book.</p>
+             <p className="text-parchment-600 mt-2 text-sm">Wārc! This analysis is AI generated.  It does make mistakes.</p>
           </div>
         )}
 

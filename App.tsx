@@ -76,6 +76,16 @@ const App: React.FC = () => {
     });
   };
 
+  const handleUpdateToken = (index: number, updates: Partial<GlossToken>) => {
+    setGlossTokens(prevTokens => {
+      const newTokens = [...prevTokens];
+      if (newTokens[index]) {
+        newTokens[index] = { ...newTokens[index], ...updates };
+      }
+      return newTokens;
+    });
+  };
+
   const handleExport = () => {
     if (glossTokens.length === 0) return;
     
@@ -143,6 +153,7 @@ const App: React.FC = () => {
           <GlossView 
             tokens={glossTokens} 
             onToggleFlag={handleToggleFlag}
+            onUpdateToken={handleUpdateToken}
           />
         )}
       </main>

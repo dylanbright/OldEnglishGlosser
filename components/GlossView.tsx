@@ -6,6 +6,7 @@ import { StudyList } from './StudyList';
 interface GlossViewProps {
   tokens: GlossToken[];
   onToggleFlag: (index: number) => void;
+  onUpdateToken: (index: number, updates: Partial<GlossToken>) => void;
 }
 
 // Punctuation that should NOT have a space before it (attaches to the left)
@@ -18,7 +19,7 @@ const NO_SPACE_AFTER = new Set([
   '(', '[', '{', '“', '‘', '#', '$', '¿', '¡'
 ]);
 
-export const GlossView: React.FC<GlossViewProps> = ({ tokens, onToggleFlag }) => {
+export const GlossView: React.FC<GlossViewProps> = ({ tokens, onToggleFlag, onUpdateToken }) => {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   // Derive flagged indices from the tokens prop so StudyList can display them
@@ -168,6 +169,7 @@ export const GlossView: React.FC<GlossViewProps> = ({ tokens, onToggleFlag }) =>
           token={activeIndex !== null ? tokens[activeIndex] : null}
           isFlagged={activeIndex !== null ? !!tokens[activeIndex]?.isFlagged : false}
           onToggleFlag={() => activeIndex !== null && onToggleFlag(activeIndex)}
+          onUpdateToken={(updates) => activeIndex !== null && onUpdateToken(activeIndex, updates)}
         />
       </div>
       

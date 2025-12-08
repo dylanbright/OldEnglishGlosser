@@ -23,6 +23,7 @@ export const GlossaryPanel: React.FC<GlossaryPanelProps> = ({
     setIsEditing(false);
     if (token) {
       setFormData({
+        original: token.original,
         lemma: token.lemma,
         partOfSpeech: token.partOfSpeech,
         modernTranslation: token.modernTranslation,
@@ -44,6 +45,7 @@ export const GlossaryPanel: React.FC<GlossaryPanelProps> = ({
     // Reset form data to current token values
     if (token) {
         setFormData({
+            original: token.original,
             lemma: token.lemma,
             partOfSpeech: token.partOfSpeech,
             modernTranslation: token.modernTranslation,
@@ -163,7 +165,16 @@ export const GlossaryPanel: React.FC<GlossaryPanelProps> = ({
                 </span>
             )}
             
-            <h2 className="text-5xl font-serif font-bold text-parchment-900 mb-2">{token.original}</h2>
+            {isEditing ? (
+                <input
+                    type="text"
+                    value={formData.original || ''}
+                    onChange={(e) => handleChange('original', e.target.value)}
+                    className="text-5xl font-serif font-bold text-parchment-900 mb-2 bg-transparent border-b border-parchment-400 focus:border-parchment-800 outline-none w-full"
+                />
+            ) : (
+                <h2 className="text-5xl font-serif font-bold text-parchment-900 mb-2">{token.original}</h2>
+            )}
             
             <div className="flex items-baseline gap-2 text-parchment-600 font-serif italic text-xl">
                 <span>from</span>

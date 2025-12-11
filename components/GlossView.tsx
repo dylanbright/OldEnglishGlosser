@@ -9,14 +9,9 @@ interface GlossViewProps {
   onUpdateToken: (index: number, updates: Partial<GlossToken>) => void;
 }
 
-// Punctuation that should NOT have a space before it (attaches to the left)
-const NO_SPACE_BEFORE = new Set([
-  '.', ',', '!', '?', ';', ':', ')', ']', '}', '”', '’', '%', '…'
-]);
-
-// Punctuation that should NOT have a space after it (attaches to the right)
+// Punctuation that explicitly attaches to the right (Openers)
 const NO_SPACE_AFTER = new Set([
-  '(', '[', '{', '“', '‘', '#', '$', '¿', '¡'
+  '(', '[', '{', '“', '‘', '#', '$', '¿', '¡', '<'
 ]);
 
 export const GlossView: React.FC<GlossViewProps> = ({ tokens, onToggleFlag, onUpdateToken }) => {
@@ -33,7 +28,7 @@ export const GlossView: React.FC<GlossViewProps> = ({ tokens, onToggleFlag, onUp
   const quoteStateMap = new Map<number, 'open' | 'close'>();
   let quoteOpen = false;
   tokens.forEach((token, idx) => {
-    if (token.original === '"') {
+    if (token.original.trim() === '"') {
       if (quoteOpen) {
         quoteStateMap.set(idx, 'close');
         quoteOpen = false;
@@ -46,15 +41,33 @@ export const GlossView: React.FC<GlossViewProps> = ({ tokens, onToggleFlag, onUp
 
   const isLeftAttaching = (token: GlossToken, index: number) => {
     if (!token) return false;
-    if (NO_SPACE_BEFORE.has(token.original)) return true;
-    if (token.original === '"' && quoteStateMap.get(index) === 'close') return true;
+    const text = token.original.trim();
+    if (!text) return false; // Skip newlines or empty tokens
+    
+    // Quotes logic
+    if (text === '"') return quoteStateMap.get(index) === 'close';
+
+    // If it is punctuation...
+    if (token.isPunctuation) {
+        // ...and NOT an opener, it likely attaches to left (.,:;!?)
+        // Exceptions: dashes often have spaces in some styles, but strict mode might not.
+        if (text === '-' || text === '–' || text === '—') return false; 
+        if (text === '&') return false;
+        if (NO_SPACE_AFTER.has(text)) return false; // It's an opener
+        
+        return true; // Default for punc (e.g. . , ! ? ; : ) ] })
+    }
+    
     return false;
   };
 
   const isRightAttaching = (token: GlossToken, index: number) => {
     if (!token) return false;
-    if (NO_SPACE_AFTER.has(token.original)) return true;
-    if (token.original === '"' && quoteStateMap.get(index) === 'open') return true;
+    const text = token.original.trim();
+
+    if (text === '"') return quoteStateMap.get(index) === 'open';
+    if (NO_SPACE_AFTER.has(text)) return true;
+    
     return false;
   };
 
@@ -95,22 +108,21 @@ export const GlossView: React.FC<GlossViewProps> = ({ tokens, onToggleFlag, onUp
                   (isRightAttaching(token, index)) || 
                   (nextToken && isLeftAttaching(nextToken, index + 1));
 
-                let marginClass = 'mr-1.5'; // Default space (0.375rem)
+                let marginClass = 'mr-1.5'; // Default space (0.375rem / 6px)
 
                 if (attachToNext) {
-                  // If we are attaching, we need to remove the gap.
-                  // We also need to compensate for padding if one or both elements have it.
-                  // Words have `px-1` (0.25rem = 4px). Punctuation has 0.
-                  
                   const currentHasPad = hasPadding(token);
                   const nextHasPad = nextToken && hasPadding(nextToken);
 
                   if (currentHasPad && nextHasPad) {
-                    marginClass = '-mr-2'; // -0.5rem (Swallow 4px right + 4px left)
+                    marginClass = '-mr-2'; // -0.5rem (Swallow padding)
                   } else if (currentHasPad || nextHasPad) {
-                    marginClass = '-mr-1'; // -0.25rem (Swallow 4px)
+                    // One has padding, one doesn't (e.g. Word + Dot)
+                    // We need to pull them tighter than just cancelling padding 
+                    // to avoid visual gap due to inline-block/font metrics.
+                    marginClass = '-mr-1.5'; // -0.375rem (-6px)
                   } else {
-                    marginClass = 'mr-0';  // No padding involved, just touch
+                    marginClass = 'mr-0';  // Punctuation + Punctuation (e.g. ".)")
                   }
                 }
 

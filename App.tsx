@@ -11,11 +11,31 @@ const App: React.FC = () => {
   const [glossTokens, setGlossTokens] = useState<GlossToken[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Helper to remove noise from tokens
+  const cleanTokens = (tokens: GlossToken[]) => {
+    return tokens.filter(t => 
+      t.original === '\n' || 
+      t.original === '\\n' || 
+      t.original.trim().length > 0
+    ).map(t => {
+      // Explicitly preserve newlines
+      if (t.original === '\n' || t.original === '\\n') {
+        return { ...t, original: '\n' };
+      }
+      // Trim other tokens
+      return {
+        ...t,
+        original: t.original.trim()
+      };
+    });
+  };
+
   const handleAnalyze = async (text: string) => {
     setAppState(AppState.LOADING);
     setErrorMsg(null);
     try {
-      const tokens = await analyzeOldEnglishText(text);
+      const rawTokens = await analyzeOldEnglishText(text);
+      const tokens = cleanTokens(rawTokens);
       setGlossTokens(tokens);
       setAppState(AppState.GLOSSING);
     } catch (err) {
@@ -32,12 +52,14 @@ const App: React.FC = () => {
   };
 
   const handleImport = (tokens: GlossToken[]) => {
-    setGlossTokens(tokens);
+    setGlossTokens(cleanTokens(tokens));
     setAppState(AppState.GLOSSING);
     setErrorMsg(null);
   };
 
-  const handleAppend = (newTokens: GlossToken[]) => {
+  const handleAppend = (newRawTokens: GlossToken[]) => {
+    const newTokens = cleanTokens(newRawTokens);
+    
     setGlossTokens(prevTokens => {
       // Check if we need a separator (newline) between the old and new text
       // to prevent them from running into each other on the same line.

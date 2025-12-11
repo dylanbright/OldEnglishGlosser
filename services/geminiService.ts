@@ -59,6 +59,8 @@ export const analyzeOldEnglishText = async (text: string): Promise<GlossToken[]>
       - Preserve the visual structure of the text.
       - If you encounter a line break (newline character) in the text, you MUST output a distinct token where "original" is exactly "\\n".
       - If there are multiple newlines (e.g. paragraph break), output multiple "\\n" tokens.
+      - DO NOT create separate tokens for whitespace (spaces/tabs). Whitespace should be implied between tokens unless it is a newline.
+      - Punctuation marks (.,?!:;) should be separate tokens.
       
       For each token, provide a detailed philological gloss including the modern meaning, lemma, part of speech, and specific grammatical morphology (case, gender, number, etc.) for this context.
       

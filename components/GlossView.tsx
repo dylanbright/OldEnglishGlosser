@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { GlossToken } from '../types';
 import { GlossaryPanel } from './GlossaryPanel';
@@ -9,7 +10,6 @@ interface GlossViewProps {
   onUpdateToken: (index: number, updates: Partial<GlossToken>) => void;
 }
 
-// Punctuation that explicitly attaches to the right (Openers)
 const NO_SPACE_AFTER = new Set([
   '(', '[', '{', '“', '‘', '#', '$', '¿', '¡', '<'
 ]);
@@ -17,14 +17,12 @@ const NO_SPACE_AFTER = new Set([
 export const GlossView: React.FC<GlossViewProps> = ({ tokens, onToggleFlag, onUpdateToken }) => {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
-  // Derive flagged indices from the tokens prop so StudyList can display them
   const flaggedIndices = new Set(
     tokens
       .map((token, idx) => token.isFlagged ? idx : -1)
       .filter(idx => idx !== -1)
   );
 
-  // Pre-calculate straight quote states (open vs close)
   const quoteStateMap = new Map<number, 'open' | 'close'>();
   let quoteOpen = false;
   tokens.forEach((token, idx) => {
@@ -39,45 +37,39 @@ export const GlossView: React.FC<GlossViewProps> = ({ tokens, onToggleFlag, onUp
     }
   });
 
+  const getContextAt = (index: number): string => {
+    const start = Math.max(0, index - 10);
+    const end = Math.min(tokens.length - 1, index + 10);
+    return tokens.slice(start, end + 1).map(t => t.original === '\n' ? ' ' : t.original).join(' ').replace(/\s+/g, ' ');
+  };
+
   const isLeftAttaching = (token: GlossToken, index: number) => {
     if (!token) return false;
     const text = token.original.trim();
-    if (!text) return false; // Skip newlines or empty tokens
-    
-    // Quotes logic
+    if (!text) return false;
     if (text === '"') return quoteStateMap.get(index) === 'close';
-
-    // If it is punctuation...
     if (token.isPunctuation) {
-        // ...and NOT an opener, it likely attaches to left (.,:;!?)
-        // Exceptions: dashes often have spaces in some styles, but strict mode might not.
         if (text === '-' || text === '–' || text === '—') return false; 
         if (text === '&') return false;
-        if (NO_SPACE_AFTER.has(text)) return false; // It's an opener
-        
-        return true; // Default for punc (e.g. . , ! ? ; : ) ] })
+        if (NO_SPACE_AFTER.has(text)) return false;
+        return true;
     }
-    
     return false;
   };
 
   const isRightAttaching = (token: GlossToken, index: number) => {
     if (!token) return false;
     const text = token.original.trim();
-
     if (text === '"') return quoteStateMap.get(index) === 'open';
     if (NO_SPACE_AFTER.has(text)) return true;
-    
     return false;
   };
 
-  // Helper to determine if a token has padding (is a Word)
   const hasPadding = (token: GlossToken) => !token.isPunctuation;
 
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-80px)] overflow-hidden animate-in fade-in duration-700">
       
-      {/* Left: Study List */}
       <div className="hidden lg:block">
         <StudyList 
           tokens={tokens} 
@@ -87,7 +79,6 @@ export const GlossView: React.FC<GlossViewProps> = ({ tokens, onToggleFlag, onUp
         />
       </div>
 
-      {/* Center: Text Area */}
       <div className="flex-1 overflow-y-auto bg-parchment-100 p-6 lg:p-12 shadow-inner lg:shadow-none">
         <div className="max-w-3xl mx-auto">
           <div className="prose prose-xl prose-p:font-serif prose-p:text-2xl prose-p:leading-loose text-parchment-900 text-justify">
@@ -102,31 +93,26 @@ export const GlossView: React.FC<GlossViewProps> = ({ tokens, onToggleFlag, onUp
                 const isFlagged = !!token.isFlagged;
                 const isPunc = token.isPunctuation;
                 
-                // Spacing Logic
                 const nextToken = tokens[index + 1];
                 const attachToNext = 
                   (isRightAttaching(token, index)) || 
                   (nextToken && isLeftAttaching(nextToken, index + 1));
 
-                let marginClass = 'mr-1.5'; // Default space (0.375rem / 6px)
+                let marginClass = 'mr-1.5';
 
                 if (attachToNext) {
                   const currentHasPad = hasPadding(token);
                   const nextHasPad = nextToken && hasPadding(nextToken);
 
                   if (currentHasPad && nextHasPad) {
-                    marginClass = '-mr-2'; // -0.5rem (Swallow padding)
+                    marginClass = '-mr-2';
                   } else if (currentHasPad || nextHasPad) {
-                    // One has padding, one doesn't (e.g. Word + Dot)
-                    // We need to pull them tighter than just cancelling padding 
-                    // to avoid visual gap due to inline-block/font metrics.
-                    marginClass = '-mr-1.5'; // -0.375rem (-6px)
+                    marginClass = '-mr-1.5';
                   } else {
-                    marginClass = 'mr-0';  // Punctuation + Punctuation (e.g. ".)")
+                    marginClass = 'mr-0';
                   }
                 }
 
-                // Render Punctuation (Non-interactive)
                 if (isPunc) {
                   return (
                     <span 
@@ -141,7 +127,6 @@ export const GlossView: React.FC<GlossViewProps> = ({ tokens, onToggleFlag, onUp
                   );
                 }
 
-                // Render Word (Interactive)
                 return (
                   <span
                     key={index}
@@ -175,10 +160,10 @@ export const GlossView: React.FC<GlossViewProps> = ({ tokens, onToggleFlag, onUp
         </div>
       </div>
 
-      {/* Right: Glossary Panel */}
       <div className="h-64 lg:h-auto lg:w-[400px] xl:w-[480px] flex-shrink-0 z-20 shadow-2xl lg:shadow-none">
         <GlossaryPanel 
           token={activeIndex !== null ? tokens[activeIndex] : null}
+          context={activeIndex !== null ? getContextAt(activeIndex) : undefined}
           isFlagged={activeIndex !== null ? !!tokens[activeIndex]?.isFlagged : false}
           onToggleFlag={() => activeIndex !== null && onToggleFlag(activeIndex)}
           onUpdateToken={(updates) => activeIndex !== null && onUpdateToken(activeIndex, updates)}

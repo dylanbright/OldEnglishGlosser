@@ -7,7 +7,6 @@ if (!apiKey) {
   console.error("API_KEY is not set in environment variables");
 }
 
-// Using a slightly larger thinking budget for complex philological tasks
 const ai = new GoogleGenAI({ apiKey: apiKey || 'DUMMY_KEY_FOR_BUILD' });
 
 const glossSchema: Schema = {
@@ -48,6 +47,18 @@ const glossSchema: Schema = {
   }
 };
 
+const deepGlossSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    modernTranslation: { type: Type.STRING },
+    lemma: { type: Type.STRING },
+    partOfSpeech: { type: Type.STRING },
+    grammaticalInfo: { type: Type.STRING },
+    etymology: { type: Type.STRING }
+  },
+  required: ["modernTranslation", "lemma", "partOfSpeech", "grammaticalInfo", "etymology"]
+};
+
 /**
  * Splits text into chunks by line count to avoid JSON output truncation.
  */
@@ -63,7 +74,6 @@ const splitIntoChunks = (text: string, maxLines: number = 12): string[] => {
 export const analyzeOldEnglishText = async (text: string): Promise<GlossToken[]> => {
   if (!apiKey) throw new Error("API Key is missing.");
 
-  // For very long texts, we process in chunks to prevent model output truncation
   const chunks = splitIntoChunks(text);
   let allTokens: GlossToken[] = [];
 
@@ -86,8 +96,7 @@ export const analyzeOldEnglishText = async (text: string): Promise<GlossToken[]>
         config: {
           responseMimeType: "application/json",
           responseSchema: glossSchema,
-          temperature: 0.1,
-          thinkingConfig: { thinkingBudget: 0 } // Flash doesn't need high budget for this, keeping it fast
+          temperature: 0.1
         }
       });
 
@@ -97,17 +106,63 @@ export const analyzeOldEnglishText = async (text: string): Promise<GlossToken[]>
           allTokens = [...allTokens, ...chunkTokens];
         } catch (parseError) {
           console.error("Chunk parse error:", response.text);
-          throw new Error(`Failed to parse analysis for segment ${index + 1}. The response was malformed.`);
+          throw new Error(`Failed to parse analysis for segment ${index + 1}.`);
         }
       } else {
-        throw new Error(`The scribe returned an empty scroll for segment ${index + 1}.`);
+        throw new Error(`Empty response for segment ${index + 1}.`);
       }
     } catch (error) {
       console.error(`Gemini API Error on chunk ${index}:`, error);
-      // If we already have some tokens, we might return them, but for a clean fix we rethrow
       throw error;
     }
   }
 
   return allTokens;
+};
+
+/**
+ * Performs a deep analysis of a single token using Google Search grounding.
+ */
+export const deepAnalyzeToken = async (token: GlossToken, context: string): Promise<{ updates: Partial<GlossToken>, sources: { title: string, uri: string }[] }> => {
+  if (!apiKey) throw new Error("API Key is missing.");
+
+  try {
+    const prompt = `You are a philological expert. Perform a deep analysis of the Old English word "${token.original}" (lemma: "${token.lemma}") in the following context: "${context}".
+    
+    INSTRUCTION:
+    1. Search the Bosworth-Toller Anglo-Saxon Dictionary and Wiktionary for this specific word.
+    2. Provide highly accurate information regarding its lemma, translation, part of speech, morphology, and etymology.
+    3. Return the results strictly in JSON format.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+        responseMimeType: "application/json",
+        responseSchema: deepGlossSchema,
+      },
+    });
+
+    const sources: { title: string, uri: string }[] = [];
+    const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+    
+    if (groundingChunks) {
+      for (const chunk of groundingChunks) {
+        if (chunk.web?.uri && chunk.web?.title) {
+          sources.push({ title: chunk.web.title, uri: chunk.web.uri });
+        }
+      }
+    }
+
+    if (response.text) {
+      const updates = JSON.parse(response.text.trim());
+      return { updates, sources };
+    }
+    
+    throw new Error("No data returned from deep analysis.");
+  } catch (error) {
+    console.error("Deep analysis error:", error);
+    throw error;
+  }
 };

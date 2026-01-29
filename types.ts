@@ -1,3 +1,4 @@
+
 export interface GlossToken {
   original: string;
   modernTranslation: string;
@@ -7,6 +8,7 @@ export interface GlossToken {
   etymology: string;
   isPunctuation: boolean;
   isFlagged?: boolean;
+  sources?: { title: string; uri: string }[];
 }
 
 export enum AppState {

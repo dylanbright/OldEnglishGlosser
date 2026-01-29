@@ -1,9 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import { GlossToken } from '../types';
-import { BookMarked, ExternalLink, Library, Bookmark, Edit2, Check, X } from 'lucide-react';
+import { BookMarked, ExternalLink, Library, Bookmark, Edit2, Check, X, Sparkles, Loader2, Link as LinkIcon } from 'lucide-react';
+import { deepAnalyzeToken } from '../services/geminiService';
 
 interface GlossaryPanelProps {
   token: GlossToken | null;
+  context?: string;
   isFlagged?: boolean;
   onToggleFlag?: () => void;
   onUpdateToken?: (updates: Partial<GlossToken>) => void;
@@ -11,14 +14,15 @@ interface GlossaryPanelProps {
 
 export const GlossaryPanel: React.FC<GlossaryPanelProps> = ({ 
   token, 
+  context = "",
   isFlagged = false, 
   onToggleFlag,
   onUpdateToken
 }) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [isDeepLoading, setIsDeepLoading] = useState(false);
   const [formData, setFormData] = useState<Partial<GlossToken>>({});
 
-  // Reset edit mode when the selected token changes
   useEffect(() => {
     setIsEditing(false);
     if (token) {
@@ -42,7 +46,6 @@ export const GlossaryPanel: React.FC<GlossaryPanelProps> = ({
 
   const handleCancel = () => {
     setIsEditing(false);
-    // Reset form data to current token values
     if (token) {
         setFormData({
             original: token.original,
@@ -52,6 +55,19 @@ export const GlossaryPanel: React.FC<GlossaryPanelProps> = ({
             grammaticalInfo: token.grammaticalInfo,
             etymology: token.etymology
         });
+    }
+  };
+
+  const handleDeepCheck = async () => {
+    if (!token || !onUpdateToken) return;
+    setIsDeepLoading(true);
+    try {
+      const result = await deepAnalyzeToken(token, context);
+      onUpdateToken({ ...result.updates, sources: result.sources });
+    } catch (error) {
+      alert("The deep search encountered a storm in the North Sea. Please try again later.");
+    } finally {
+      setIsDeepLoading(false);
     }
   };
 
@@ -86,19 +102,14 @@ export const GlossaryPanel: React.FC<GlossaryPanelProps> = ({
     );
   }
 
-  // Bosworth-Toller search URL
   const bosworthTollerUrl = `https://bosworthtoller.com/search?q=${encodeURIComponent(token.lemma)}`;
-  
-  // Wiktionary URL with #Old_English anchor
   const wiktionaryUrl = `https://en.wiktionary.org/wiki/${encodeURIComponent(token.lemma)}#Old_English`;
 
   return (
     <div className="h-full overflow-y-auto border-l border-parchment-300 bg-parchment-50 shadow-inner relative">
       <div className="p-8 space-y-8 animate-in slide-in-from-right-4 duration-300 pb-20">
         
-        {/* Top Controls: Flag & Edit */}
         <div className="flex items-center justify-between">
-             {/* Edit Controls */}
              <div className="flex items-center gap-2">
                 {isEditing ? (
                     <>
@@ -128,26 +139,47 @@ export const GlossaryPanel: React.FC<GlossaryPanelProps> = ({
                 )}
              </div>
 
-             <label className={`
-                flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-full border transition-all select-none
-                ${isFlagged 
-                    ? 'bg-red-50 border-red-200 text-red-900' 
-                    : 'bg-parchment-100 border-parchment-200 text-parchment-600 hover:bg-white'}
-             `}>
-                <input 
-                    type="checkbox" 
-                    className="hidden" 
-                    checked={isFlagged}
-                    onChange={onToggleFlag}
-                />
-                <Bookmark size={16} className={isFlagged ? "fill-red-800" : ""} />
-                <span className="text-xs font-bold tracking-wide uppercase">
-                    {isFlagged ? 'Flagged' : 'Flag'}
-                </span>
-             </label>
+             <div className="flex items-center gap-2">
+                {!isEditing && (
+                    <button
+                        onClick={handleDeepCheck}
+                        disabled={isDeepLoading}
+                        className={`
+                            flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all text-xs font-bold uppercase tracking-wide
+                            ${isDeepLoading 
+                                ? 'bg-parchment-200 text-parchment-400 cursor-not-allowed' 
+                                : 'bg-indigo-50 border-indigo-100 text-indigo-700 hover:bg-indigo-100'}
+                        `}
+                    >
+                        {isDeepLoading ? (
+                            <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                            <Sparkles size={14} />
+                        )}
+                        Check Again with AI
+                    </button>
+                )}
+
+                <label className={`
+                    flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-full border transition-all select-none
+                    ${isFlagged 
+                        ? 'bg-red-50 border-red-200 text-red-900' 
+                        : 'bg-parchment-100 border-parchment-200 text-parchment-600 hover:bg-white'}
+                `}>
+                    <input 
+                        type="checkbox" 
+                        className="hidden" 
+                        checked={isFlagged}
+                        onChange={onToggleFlag}
+                    />
+                    <Bookmark size={16} className={isFlagged ? "fill-red-800" : ""} />
+                    <span className="text-xs font-bold tracking-wide uppercase">
+                        {isFlagged ? 'Flagged' : 'Flag'}
+                    </span>
+                </label>
+             </div>
         </div>
 
-        {/* Header Section */}
         <div className="border-b-2 border-parchment-200 pb-6 -mt-2">
             {isEditing ? (
                 <div className="flex flex-col gap-2 mb-2">
@@ -191,7 +223,6 @@ export const GlossaryPanel: React.FC<GlossaryPanelProps> = ({
             </div>
         </div>
 
-        {/* Meaning Section */}
         <div>
             <h4 className="text-xs font-bold text-parchment-500 uppercase tracking-widest mb-3 flex items-center gap-2">
                 <span className="w-4 h-px bg-parchment-400"></span>
@@ -210,7 +241,6 @@ export const GlossaryPanel: React.FC<GlossaryPanelProps> = ({
             )}
         </div>
 
-        {/* Grammar Section */}
         <div className="bg-parchment-100 rounded-xl p-6 border border-parchment-200">
             <h4 className="text-xs font-bold text-parchment-500 uppercase tracking-widest mb-4">
                 Grammatical Analysis
@@ -231,7 +261,6 @@ export const GlossaryPanel: React.FC<GlossaryPanelProps> = ({
             </div>
         </div>
 
-         {/* Etymology Section */}
         {(token.etymology || isEditing) && (
             <div>
                 <h4 className="text-xs font-bold text-parchment-500 uppercase tracking-widest mb-3 flex items-center gap-2">
@@ -253,7 +282,30 @@ export const GlossaryPanel: React.FC<GlossaryPanelProps> = ({
             </div>
         )}
 
-        {/* External Links Section */}
+        {/* AI Grounding Sources Section */}
+        {!isEditing && token.sources && token.sources.length > 0 && (
+            <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                <h4 className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <Sparkles size={10} />
+                    AI Verified Sources
+                </h4>
+                <div className="space-y-2">
+                    {token.sources.map((source, idx) => (
+                        <a 
+                            key={idx}
+                            href={source.uri}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 text-xs text-indigo-700 hover:text-indigo-900 hover:underline truncate"
+                        >
+                            <LinkIcon size={12} />
+                            {source.title}
+                        </a>
+                    ))}
+                </div>
+            </div>
+        )}
+
         {!isEditing && (
             <div className="mt-8 pt-6 border-t border-parchment-200">
             <h4 className="text-xs font-bold text-parchment-500 uppercase tracking-widest mb-4">
